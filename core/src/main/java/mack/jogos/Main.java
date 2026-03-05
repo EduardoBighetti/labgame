@@ -21,7 +21,7 @@ public class Main implements ApplicationListener {
     SpriteBatch spriteBatch;
     FitViewport viewport;
     
-
+//da
     //asteoride 
     Texture asteroideTexture;
 
