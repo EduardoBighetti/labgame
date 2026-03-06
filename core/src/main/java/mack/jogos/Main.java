@@ -9,9 +9,9 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
-import com.badlogic.gdx.utils.viewport.Viewport;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
+
 
 /** {@link com.badlogic.gdx.ApplicationListener} implementation shared by all platforms. */
 public class Main implements ApplicationListener {
@@ -21,7 +21,7 @@ public class Main implements ApplicationListener {
     SpriteBatch spriteBatch;
     FitViewport viewport;
     
-//da
+
     //asteoride 
     Texture asteroideTexture;
 
@@ -29,12 +29,16 @@ public class Main implements ApplicationListener {
     Texture espacoTexture;
     Texture backgroundTexture;
     Texture dropTexture;
-    Array<Sprite> dropSprites;  
 
     Vector2 touchPos;
     Array<Sprite> asteroideSprites;
     float dropTimer;
-    createAsteroids();
+    
+
+    //inimigo
+    Texture inimigoTexture;
+    Array<Sprite> inimigoSprites;
+    float inimigoTimer;
 
     @Override
     public void create() {
@@ -45,12 +49,13 @@ public class Main implements ApplicationListener {
 
         naveSprite = new Sprite(naveTexture);
         naveSprite.setSize(1, 1);
-
+        
         //creador asteroide
 
         asteroideTexture = new Texture(Gdx.files.internal("asteroide.png"));    
         //creador fundo do jogo
-        espacoTexture = new Texture(Gdx.files.internal("espaco.png"));
+        espacoTexture = new Texture(Gdx.files.internal("espaco.jpg"));
+        backgroundTexture = espacoTexture;
 
         touchPos = new Vector2();
 
@@ -59,7 +64,12 @@ public class Main implements ApplicationListener {
         //inicializa o array de asteroides
         asteroideSprites = new Array<Sprite>();
 
-        
+        createAsteroids();
+
+        //criador inimigo
+        inimigoTexture = new Texture(Gdx.files.internal("inimigo.png"));
+        inimigoSprites = new Array<Sprite>();
+        createInimigo();
 
         // Prepare your application here.
         
@@ -102,25 +112,87 @@ public class Main implements ApplicationListener {
     }
 
 
+
+//metodo para criar inimigo
+    private void createInimigo() {
+
+    float largura = 1;
+    float altura = 1;
+
+    float worldWidth = viewport.getWorldWidth();
+    float worldHeight = viewport.getWorldHeight();
+
+    Sprite inimigo = new Sprite(inimigoTexture);
+
+    inimigo.setSize(largura, altura);
+    inimigo.setX(MathUtils.random(0f, worldWidth - largura));
+    inimigo.setY(worldHeight);
+
+    inimigoSprites.add(inimigo);
+}
+
+
+
+
     private void logic() {
     
     float worldWidth = viewport.getWorldWidth();
     float worldHeight = viewport.getWorldHeight();
-    naveSprite.setX(MathUtils.clamp(naveSprite.getX(), 0, worldWidth - naveWidth()));
+    naveSprite.setX(MathUtils.clamp(naveSprite.getX(), 0, worldWidth - naveSprite.getWidth()));
 
     float delta = Gdx.graphics.getDeltaTime(); // Tempo desde o último frame
 
-
-    for (Sprite droSprite : dropSprites) {
-        droSprite.translateY(-2f * delta); // Move o asteroide para baixo
+    for (Sprite asteroideSprite : asteroideSprites) {
+        asteroideSprite.translateY(-2f * delta); // Move o asteroide para baixo
     }
     
-    createAsteroids(); // Cria novos asteroides
+    // Remove asteroides que saíram da tela
+    for (int i = asteroideSprites.size - 1; i >= 0; i--) {
+        if (asteroideSprites.get(i).getY() < -1) {
+            asteroideSprites.removeIndex(i);
+        }
+    }
+
+    dropTimer += delta;
+    if (dropTimer >= 1f) { // A cada 1 segundo, cria um novo asteroide
+        dropTimer = 0;
+        createAsteroids(); // Cria novos asteroides
+
+    }
+
+
+    // Lógica para o inimigo descer
+    for (Sprite inimigo : inimigoSprites) {
+    inimigo.translateY(-2f * delta);
+}   
+
+    //spaw do inimigo
+    inimigoTimer += delta;
+
+    if(inimigoTimer >= 2f){
+        inimigoTimer = 0;
+        createInimigo();
+}
+
+
+
+    //colisa com o inimigo
+    for (int i = inimigoSprites.size - 1; i >= 0; i--) {
+
+    Sprite inimigo = inimigoSprites.get(i);
+
+    if (inimigo.getBoundingRectangle().overlaps(naveSprite.getBoundingRectangle())) {
+        inimigoSprites.removeIndex(i);
+    }
+}
+
+
+
 
     }
 
     private void input() {
-    float speed = 4f;
+    float speed = 8f;
 
     float delta = Gdx.graphics.getDeltaTime();
 
@@ -139,6 +211,23 @@ public class Main implements ApplicationListener {
     if(Gdx.input.isKeyPressed(com.badlogic.gdx.Input.Keys.S)) {
         naveSprite.translateY(-speed * delta);
     }
+
+
+    //logia de colisao asteroide
+    
+    for (int i = asteroideSprites.size - 1; i >= 0; i--) {
+
+    Sprite asteroide = asteroideSprites.get(i);
+
+    if (asteroide.getBoundingRectangle().overlaps(naveSprite.getBoundingRectangle())) {
+        asteroideSprites.removeIndex(i);
+    }
+}
+
+
+
+
+
 }
 
 
@@ -149,21 +238,31 @@ public class Main implements ApplicationListener {
     viewport.apply();
     spriteBatch.setProjectionMatrix(viewport.getCamera().combined);
 
- //desenha o fundo, a nave e os asteroides
+    //desenha o fundo, a nave e os asteroides
     spriteBatch.begin();
     float worldWidth = viewport.getWorldWidth();
     float worldHeight = viewport.getWorldHeight(); 
     spriteBatch.draw(backgroundTexture, 0, 0, worldWidth, worldHeight);
     naveSprite.draw(spriteBatch);
-    spriteBatch.end();
-
-    for (Sprite droSprite : dropSprites) {
-        droSprite.draw(spriteBatch);
+    
+    for (Sprite asteroideSprite : asteroideSprites) {
+        asteroideSprite.draw(spriteBatch);
     }
+    
+
+    //desenha o inimigo
+    for (Sprite inimigo : inimigoSprites) {
+    inimigo.draw(spriteBatch);
+}
+
+
 
     spriteBatch.end();
 
-}
+    
+
+
+    }
 
     @Override
     public void pause() {
