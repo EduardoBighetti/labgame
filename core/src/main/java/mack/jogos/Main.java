@@ -40,6 +40,12 @@ public class Main implements ApplicationListener {
     Array<Sprite> inimigoSprites;
     float inimigoTimer;
 
+    //Criação do tiro(nave)
+    Texture tiroTexture;
+    Array<Sprite> tiroSprites;
+    
+
+
     @Override
     public void create() {
         //nave creador
@@ -71,6 +77,13 @@ public class Main implements ApplicationListener {
         inimigoSprites = new Array<Sprite>();
         createInimigo();
 
+
+
+        //criador tiro
+        tiroTexture = new Texture(Gdx.files.internal("tironave.png"));
+        tiroSprites = new Array<Sprite>();
+        createTiro();
+
         // Prepare your application here.
         
     }
@@ -92,6 +105,31 @@ public class Main implements ApplicationListener {
         draw();
         // Draw your application here.
     }
+
+
+//metodo para criar tiro dentro da nave
+    private void createTiro() {
+    float largura = 0.3f;
+    float altura = 0.7f;
+
+    Sprite tiro = new Sprite(tiroTexture);
+
+    tiro.setSize(largura, altura);
+
+    // posição da nave
+    tiro.setX(naveSprite.getX() + naveSprite.getWidth() / 2 - largura / 2);
+    tiro.setY(naveSprite.getY() + naveSprite.getHeight());
+
+    tiroSprites.add(tiro);
+}
+
+
+
+
+
+
+
+
 
 //metodo para criar os asteroides
     private void createAsteroids() {
@@ -212,6 +250,10 @@ public class Main implements ApplicationListener {
         naveSprite.translateY(-speed * delta);
     }
 
+    if(Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.SPACE)){
+    createTiro();
+}
+
 
     //logia de colisao asteroide
     
@@ -225,6 +267,19 @@ public class Main implements ApplicationListener {
 }
 
 
+
+//fazer tiros se moverem para cima 
+for (Sprite tiro : tiroSprites) {
+    tiro.translateY(6f * delta);
+}
+
+
+//remover tiros que saíram da tela
+for (int i = tiroSprites.size - 1; i >= 0; i--) {
+    if (tiroSprites.get(i).getY() > viewport.getWorldHeight()) {
+        tiroSprites.removeIndex(i);
+    }
+}
 
 
 
@@ -255,6 +310,11 @@ public class Main implements ApplicationListener {
     inimigo.draw(spriteBatch);
 }
 
+
+//desenha os tiros
+for (Sprite tiro : tiroSprites) {
+    tiro.draw(spriteBatch);
+}
 
 
     spriteBatch.end();
