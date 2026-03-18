@@ -2,6 +2,8 @@ package mack.jogos;
 
 import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.audio.Music;
+import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Sprite;
@@ -43,7 +45,12 @@ public class Main implements ApplicationListener {
     //Criação do tiro(nave)
     Texture tiroTexture;
     Array<Sprite> tiroSprites;
+
+    //Criação som do jogo(fundo)
+    Music music;
     
+    //Criação som do tiro
+    Sound somColisao;
 
 
     @Override
@@ -84,6 +91,14 @@ public class Main implements ApplicationListener {
         tiroSprites = new Array<Sprite>();
         createTiro();
 
+        //criador musica de fundo
+        music = Gdx.audio.newMusic(Gdx.files.internal("music.mp3"));
+        music.setLooping(true);
+        music.play();   
+
+        //criador som do tiro
+        somColisao = Gdx.audio.newSound(Gdx.files.internal("drop.mp3"));
+
         // Prepare your application here.
         
     }
@@ -103,6 +118,8 @@ public class Main implements ApplicationListener {
         input();
         logic();
         draw();
+
+
         // Draw your application here.
     }
 
@@ -221,9 +238,9 @@ public class Main implements ApplicationListener {
 
     if (inimigo.getBoundingRectangle().overlaps(naveSprite.getBoundingRectangle())) {
         inimigoSprites.removeIndex(i);
+        somColisao.play(); // Toca o som quando o inimigo some
     }
 }
-
 
 
 
@@ -263,6 +280,7 @@ public class Main implements ApplicationListener {
 
     if (asteroide.getBoundingRectangle().overlaps(naveSprite.getBoundingRectangle())) {
         asteroideSprites.removeIndex(i);
+        somColisao.play(); // Toca o som quando o asteroide some
     }
 }
 
@@ -336,6 +354,14 @@ for (Sprite tiro : tiroSprites) {
 
     @Override
     public void dispose() {
+        spriteBatch.dispose();
+        naveTexture.dispose();
+        asteroideTexture.dispose();
+        espacoTexture.dispose();
+        inimigoTexture.dispose();
+        tiroTexture.dispose();
+        music.dispose();
+        somColisao.dispose(); // Liberando o som da memória
         // Destroy application's resources here.
     }
 }
