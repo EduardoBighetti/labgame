@@ -6,362 +6,211 @@ import com.badlogic.gdx.audio.Music;
 import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.g2d.Sprite;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
-import com.badlogic.gdx.math.MathUtils;
-import com.badlogic.gdx.math.Vector2;
 
-
-/** {@link com.badlogic.gdx.ApplicationListener} implementation shared by all platforms. */
 public class Main implements ApplicationListener {
-    //nave
-    Texture naveTexture;
-    Sprite naveSprite;
-    SpriteBatch spriteBatch;
-    FitViewport viewport;
+
+    private SpriteBatch spriteBatch;
+    private FitViewport viewport;
+    private Texture     backgroundTexture;
+
+    private Texture naveTexture;
+    private Texture asteroideTexture;
+    private Texture specialAsteroideTexture;
+    private Texture sateliteTexture;
+    private Texture tiroTexture;
+
+    private Player            player;
+    private Array<Tiro>       tiros;
     
+    // POLIMORFISMO: Uma única lista para todos os objetos que caem!
+    private Array<GameObject> alvos; 
 
-    //asteoride 
-    Texture asteroideTexture;
+    private float spawnTimer;
 
-    //Fundo do Jogo
-    Texture espacoTexture;
-    Texture backgroundTexture;
-    Texture dropTexture;
+    // --- Pontuação na tela ---
+    private int score;
+    private BitmapFont font;
 
-    Vector2 touchPos;
-    Array<Sprite> asteroideSprites;
-    float dropTimer;
-    
-
-    //inimigo
-    Texture inimigoTexture;
-    Array<Sprite> inimigoSprites;
-    float inimigoTimer;
-
-    //Criação do tiro(nave)
-    Texture tiroTexture;
-    Array<Sprite> tiroSprites;
-
-    //Criação som do jogo(fundo)
-    Music music;
-    
-    //Criação som do tiro
-    Sound somColisao;
-
+    private Music music;
+    private Sound somColisao;
 
     @Override
     public void create() {
-        //nave creador
-        naveTexture = new Texture(Gdx.files.internal("nave.png"));
         spriteBatch = new SpriteBatch();
-        viewport = new FitViewport(8, 5);
+        viewport    = new FitViewport(8, 5);
 
-        naveSprite = new Sprite(naveTexture);
-        naveSprite.setSize(1, 1);
-        
-        //creador asteroide
+        naveTexture             = new Texture(Gdx.files.internal("nave.png"));
+        asteroideTexture        = new Texture(Gdx.files.internal("asteroide.png"));
+        specialAsteroideTexture = new Texture(Gdx.files.internal("asteroideespecial.png")); 
+        sateliteTexture         = new Texture(Gdx.files.internal("inimigo.png"));   
+        tiroTexture             = new Texture(Gdx.files.internal("tironave.png"));
+        backgroundTexture       = new Texture(Gdx.files.internal("espaco.jpg"));
 
-        asteroideTexture = new Texture(Gdx.files.internal("asteroide.png"));    
-        //creador fundo do jogo
-        espacoTexture = new Texture(Gdx.files.internal("espaco.jpg"));
-        backgroundTexture = espacoTexture;
+        player = new Player(naveTexture, viewport);
+        tiros  = new Array<>();
+        alvos  = new Array<>();
 
-        touchPos = new Vector2();
+        // Configurando a fonte do texto da pontuação
+        font = new BitmapFont();
+        font.setUseIntegerPositions(false);
+        font.getData().setScale(0.02f); // Escala reduzida para caber no FitViewport(8,5)
 
-
-        
-        //inicializa o array de asteroides
-        asteroideSprites = new Array<Sprite>();
-
-        createAsteroids();
-
-        //criador inimigo
-        inimigoTexture = new Texture(Gdx.files.internal("inimigo.png"));
-        inimigoSprites = new Array<Sprite>();
-        createInimigo();
-
-
-
-        //criador tiro
-        tiroTexture = new Texture(Gdx.files.internal("tironave.png"));
-        tiroSprites = new Array<Sprite>();
-        createTiro();
-
-        //criador musica de fundo
         music = Gdx.audio.newMusic(Gdx.files.internal("music.mp3"));
         music.setLooping(true);
-        music.play();   
-
-        //criador som do tiro
+        music.play();
         somColisao = Gdx.audio.newSound(Gdx.files.internal("drop.mp3"));
 
-        // Prepare your application here.
-        
+        score = 0;
     }
 
     @Override
     public void resize(int width, int height) {
-        
-        if(width <= 0 || height <= 0) return;
+        if (width <= 0 || height <= 0) return;
         viewport.update(width, height, true);
-        // Resize your application here. The parameters represent the new window size.
-        // If the window is minimized on a desktop (LWJGL3) platform, width and height are 0, which causes problems.
-        // In that case, we don't resize anything, and wait for the window to be a normal size before updating.
     }
 
     @Override
     public void render() {
-        input();
-        logic();
+        float delta = Gdx.graphics.getDeltaTime();
+        input(delta);
+        logic(delta);
         draw();
-
-
-        // Draw your application here.
     }
 
+    private void input(float delta) {
+        player.update(delta);
 
-//metodo para criar tiro dentro da nave
-    private void createTiro() {
-    float largura = 0.3f;
-    float altura = 0.7f;
-
-    Sprite tiro = new Sprite(tiroTexture);
-
-    tiro.setSize(largura, altura);
-
-    // posição da nave
-    tiro.setX(naveSprite.getX() + naveSprite.getWidth() / 2 - largura / 2);
-    tiro.setY(naveSprite.getY() + naveSprite.getHeight());
-
-    tiroSprites.add(tiro);
-}
-
-
-
-
-
-
-
-
-
-//metodo para criar os asteroides
-    private void createAsteroids() {
-        // Define o tamanho dos asteroides e do mundo
-        float asteroideWidth = 1;
-        float asteroideHeight = 1;
-        float worldWidth = viewport.getWorldWidth();
-        float worldHeight = viewport.getWorldHeight();
-
-        //posicionamento asteroide
-        Sprite asteroideSprite = new Sprite(asteroideTexture);
-        asteroideSprite.setSize(asteroideWidth, asteroideHeight);
-        //asteroideSprite.setX(0);
-        asteroideSprite.setX(MathUtils.random(0f, worldWidth - asteroideWidth)); // Posiciona aleatoriamente no eixo X
-        asteroideSprite.setY(worldHeight);
-        asteroideSprites.add(asteroideSprite);
-
-    }
-
-
-
-//metodo para criar inimigo
-    private void createInimigo() {
-
-    float largura = 1;
-    float altura = 1;
-
-    float worldWidth = viewport.getWorldWidth();
-    float worldHeight = viewport.getWorldHeight();
-
-    Sprite inimigo = new Sprite(inimigoTexture);
-
-    inimigo.setSize(largura, altura);
-    inimigo.setX(MathUtils.random(0f, worldWidth - largura));
-    inimigo.setY(worldHeight);
-
-    inimigoSprites.add(inimigo);
-}
-
-
-
-
-    private void logic() {
-    
-    float worldWidth = viewport.getWorldWidth();
-    float worldHeight = viewport.getWorldHeight();
-    naveSprite.setX(MathUtils.clamp(naveSprite.getX(), 0, worldWidth - naveSprite.getWidth()));
-
-    float delta = Gdx.graphics.getDeltaTime(); // Tempo desde o último frame
-
-    for (Sprite asteroideSprite : asteroideSprites) {
-        asteroideSprite.translateY(-2f * delta); // Move o asteroide para baixo
-    }
-    
-    // Remove asteroides que saíram da tela
-    for (int i = asteroideSprites.size - 1; i >= 0; i--) {
-        if (asteroideSprites.get(i).getY() < -1) {
-            asteroideSprites.removeIndex(i);
+        if (player.isShootPressed()) {
+            tiros.add(new Tiro(tiroTexture, player.getCenterX(), player.getTopY()));
         }
     }
 
-    dropTimer += delta;
-    if (dropTimer >= 1f) { // A cada 1 segundo, cria um novo asteroide
-        dropTimer = 0;
-        createAsteroids(); // Cria novos asteroides
+    private void logic(float delta) {
+        float worldWidth  = viewport.getWorldWidth();
+        float worldHeight = viewport.getWorldHeight();
 
+        // === Sistema de Spawn Inteligente ===
+        spawnTimer += delta;
+        if (spawnTimer >= 1f) {
+            spawnTimer = 0;
+            
+            // Sorteia um número de 1 a 10 para decidir o que vai cair
+            int sorteio = com.badlogic.gdx.math.MathUtils.random(1, 10);
+            
+            if (sorteio <= 5) {
+                alvos.add(new Asteroide(asteroideTexture, worldWidth, worldHeight));
+            } else if (sorteio <= 7) {
+                alvos.add(new SpecialAsteroide(specialAsteroideTexture, worldWidth, worldHeight));
+            } else if (sorteio <= 9) {
+                alvos.add(new Satelite(sateliteTexture, worldWidth, worldHeight));
+            } else {
+                alvos.add(new PowerUp(sateliteTexture, worldWidth, worldHeight)); // Usa textura de inimigo, mas fica verde
+            }
+        }
+
+        // === Loop ÚNICO para todos os inimigos e powerups ===
+        for (int i = alvos.size - 1; i >= 0; i--) {
+            GameObject alvo = alvos.get(i);
+            alvo.update(delta);
+
+            if (alvo.isOutOfBounds()) {
+                alvos.removeIndex(i);
+                continue;
+            }
+
+            // 1. Colisão com o Player
+            if (alvo.getSprite().getBoundingRectangle().overlaps(player.getSprite().getBoundingRectangle())) {
+                alvos.removeIndex(i);
+                somColisao.play();
+                
+                // Usando instanceof como pedido no documento
+                if (alvo instanceof PowerUp) {
+                    score += 10; // Pegou o bônus!
+                } else {
+                    score -= 5; // Bateu no inimigo, perde ponto
+                }
+                continue; // Pula para o próximo alvo
+            }
+
+            // 2. Colisão com Tiros (Apenas Asteroides normais e especiais)
+            for (int j = tiros.size - 1; j >= 0; j--) {
+                Tiro t = tiros.get(j);
+                
+                if (alvo.getSprite().getBoundingRectangle().overlaps(t.getSprite().getBoundingRectangle())) {
+                    
+                    // Satélite e PowerUp NÃO são destruídos por tiros!
+                    if (!(alvo instanceof Satelite) && !(alvo instanceof PowerUp)) {
+                        alvos.removeIndex(i);
+                        tiros.removeIndex(j);
+                        somColisao.play();
+
+                        // Pontuação baseada no tipo usando instanceof
+                        if (alvo instanceof SpecialAsteroide) {
+                            score += SpecialAsteroide.PONTOS;
+                        } else if (alvo instanceof Asteroide) {
+                            score += Asteroide.PONTOS;
+                        }
+                        break; // Tiro destruído, sai do loop de tiros
+                    }
+                }
+            }
+        }
+
+        // === Atualiza Tiros ===
+        for (int i = tiros.size - 1; i >= 0; i--) {
+            Tiro t = tiros.get(i);
+            t.update(delta);
+            if (t.isOutOfBounds(worldHeight)) tiros.removeIndex(i);
+        }
     }
-
-
-    // Lógica para o inimigo descer
-    for (Sprite inimigo : inimigoSprites) {
-    inimigo.translateY(-2f * delta);
-}   
-
-    //spaw do inimigo
-    inimigoTimer += delta;
-
-    if(inimigoTimer >= 2f){
-        inimigoTimer = 0;
-        createInimigo();
-}
-
-
-
-    //colisa com o inimigo
-    for (int i = inimigoSprites.size - 1; i >= 0; i--) {
-
-    Sprite inimigo = inimigoSprites.get(i);
-
-    if (inimigo.getBoundingRectangle().overlaps(naveSprite.getBoundingRectangle())) {
-        inimigoSprites.removeIndex(i);
-        somColisao.play(); // Toca o som quando o inimigo some
-    }
-}
-
-
-
-    }
-
-    private void input() {
-    float speed = 8f;
-
-    float delta = Gdx.graphics.getDeltaTime();
-
-    if(Gdx.input.isKeyPressed(com.badlogic.gdx.Input.Keys.D)) {
-        naveSprite.translateX(speed * delta);
-    }
-
-    if(Gdx.input.isKeyPressed(com.badlogic.gdx.Input.Keys.A)) {
-        naveSprite.translateX(-speed * delta);
-    }
-
-    if(Gdx.input.isKeyPressed(com.badlogic.gdx.Input.Keys.W)) {
-        naveSprite.translateY(speed * delta);
-    }
-
-    if(Gdx.input.isKeyPressed(com.badlogic.gdx.Input.Keys.S)) {
-        naveSprite.translateY(-speed * delta);
-    }
-
-    if(Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.SPACE)){
-    createTiro();
-}
-
-
-    //logia de colisao asteroide
-    
-    for (int i = asteroideSprites.size - 1; i >= 0; i--) {
-
-    Sprite asteroide = asteroideSprites.get(i);
-
-    if (asteroide.getBoundingRectangle().overlaps(naveSprite.getBoundingRectangle())) {
-        asteroideSprites.removeIndex(i);
-        somColisao.play(); // Toca o som quando o asteroide some
-    }
-}
-
-
-
-//fazer tiros se moverem para cima 
-for (Sprite tiro : tiroSprites) {
-    tiro.translateY(6f * delta);
-}
-
-
-//remover tiros que saíram da tela
-for (int i = tiroSprites.size - 1; i >= 0; i--) {
-    if (tiroSprites.get(i).getY() > viewport.getWorldHeight()) {
-        tiroSprites.removeIndex(i);
-    }
-}
-
-
-
-}
-
-
 
     private void draw() {
-//limpa a tela
-    ScreenUtils.clear(Color.BLACK);
-    viewport.apply();
-    spriteBatch.setProjectionMatrix(viewport.getCamera().combined);
+        ScreenUtils.clear(Color.BLACK);
+        viewport.apply();
+        spriteBatch.setProjectionMatrix(viewport.getCamera().combined);
 
-    //desenha o fundo, a nave e os asteroides
-    spriteBatch.begin();
-    float worldWidth = viewport.getWorldWidth();
-    float worldHeight = viewport.getWorldHeight(); 
-    spriteBatch.draw(backgroundTexture, 0, 0, worldWidth, worldHeight);
-    naveSprite.draw(spriteBatch);
-    
-    for (Sprite asteroideSprite : asteroideSprites) {
-        asteroideSprite.draw(spriteBatch);
-    }
-    
+        spriteBatch.begin();
 
-    //desenha o inimigo
-    for (Sprite inimigo : inimigoSprites) {
-    inimigo.draw(spriteBatch);
-}
+        float w = viewport.getWorldWidth();
+        float h = viewport.getWorldHeight();
 
+        spriteBatch.draw(backgroundTexture, 0, 0, w, h);
+        player.draw(spriteBatch);
 
-//desenha os tiros
-for (Sprite tiro : tiroSprites) {
-    tiro.draw(spriteBatch);
-}
+        // Desenha todos os alvos com um único for!
+        for (GameObject alvo : alvos) {
+            alvo.draw(spriteBatch);
+        }
+        
+        for (Tiro t : tiros) {
+            t.draw(spriteBatch);
+        }
 
+        // Desenha a pontuação no topo esquerdo da tela
+        font.draw(spriteBatch, "Pontos: " + score, 0.2f, h - 0.2f);
 
-    spriteBatch.end();
-
-    
-
-
+        spriteBatch.end();
     }
 
-    @Override
-    public void pause() {
-        // Invoked when your application is paused.
-    }
-
-    @Override
-    public void resume() {
-        // Invoked when your application is resumed after pause.
-    }
+    @Override public void pause()  {}
+    @Override public void resume() {}
 
     @Override
     public void dispose() {
         spriteBatch.dispose();
         naveTexture.dispose();
         asteroideTexture.dispose();
-        espacoTexture.dispose();
-        inimigoTexture.dispose();
+        specialAsteroideTexture.dispose();
+        sateliteTexture.dispose();
         tiroTexture.dispose();
+        backgroundTexture.dispose();
         music.dispose();
-        somColisao.dispose(); // Liberando o som da memória
-        // Destroy application's resources here.
+        somColisao.dispose();
+        font.dispose(); // Não esqueça de dar dispose na fonte!
     }
 }
